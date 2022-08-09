@@ -1,3 +1,0 @@
-Authors
-Mozamane Baloyi
-Jiyane Danisile

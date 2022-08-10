@@ -1,47 +1,54 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Aug 13 14:21:54 2020
-@author: Robinson Montes
-"""
-from fabric.api import local, put, run, env
-from datetime import datetime
+""" Transfers file from local to remote """
+from fabric.api import *
+import datetime
 
+
+env.use_ssh_config = True
+env.hosts = ['35.237.82.133', '35.196.231.32']
 env.user = 'ubuntu'
-env.hosts = ['35.227.35.75', '100.24.37.33']
+env.key_filename = '~/.ssh/holberton'
+date = datetime.datetime.now().strftime("%Y%m%d%I%M%S")
+
+
+def transfer():
+    """ transfers a specific file """
+    put('./0-setup_web_static.sh', '/tmp/')
 
 
 def do_pack():
     """
-    Targginng project directory into a packages as .tgz
+        Generates a .tgz archive from the contents of web_static folder
+        Return: the archive path if the archive has been correctly generated
+        Otherwise Return: None
     """
-    now = datetime.now().strftime("%Y%m%d%H%M%S")
-    local('sudo mkdir -p ./versions')
-    path = './versions/web_static_{}'.format(now)
-    local('sudo tar -czvf {}.tgz web_static'.format(path))
-    name = '{}.tgz'.format(path)
-    if name:
-        return name
-    else:
-        return None
+    local("mkdir -p ./versions")
+    local("tar czvf ./versions/web_static_{}.tgz ./web_static/*".format(date))
 
 
 def do_deploy(archive_path):
-    """Deploy the boxing package tgz file
-    """
+    """ Distributes an archive to multiple webservers """
     try:
-        archive = archive_path.split('/')[-1]
-        path = '/data/web_static/releases/' + archive.strip('.tgz')
-        current = '/data/web_static/current'
-        put(archive_path, '/tmp')
-        run('mkdir -p {}/'.format(path))
-        run('tar -xzf /tmp/{} -C {}'.format(archive, path))
-        run('rm /tmp/{}'.format(archive))
-        run('mv {}/web_static/* {}'.format(path, path))
-        run('rm -rf {}/web_static'.format(path))
-        run('rm -rf {}'.format(current))
-        run('ln -s {} {}'.format(path, current))
-        print('New version deployed!')
+        if not archive_path:
+            return False
+        try:
+            name = archive_path.split('/')[-1]
+        except:
+            name = archive_path
+
+        put(archive_path, '/tmp/')
+        run("mkdir -p /data/web_static/releases/{}/".format(name[:-4]))
+        with cd('/tmp/'):
+            run('tar xzf {} -C /data/web_static/releases/{}/'.format(name,
+                name[:-4]))
+            sudo('rm ./{}'.format(name))
+        with cd('/data/web_static/'):
+            run('mv releases/{}/web_static/*\
+                    /data/web_static/releases/{}/'
+                .format(name[:-4], name[:-4]))
+            run('rm -rf ./current')
+            run('ln -s /data/web_static/releases/{}/\
+                    /data/web_static/current'.format(name[:-4]))
         return True
     except:
         return False

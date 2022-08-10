@@ -11,10 +11,15 @@ def tearDown(self):
     storage.close()
 
 
-@app.route('/states_list')
-def list_states_route():
+@app.route('/hbnb')
+def index_route():
+    """ display the index route """
     states = storage.all("State").values()
-    return render_template('7-states_list.html', states=states)
+    amenity = storage.all("Amenity").values()
+    places = storage.all("Place").values()
+    return render_template('8-index.html', states=states, amenities=amenity,
+            places=places)
+
 
 if __name__ == "__main__":
     app.run(port=5000, host='0.0.0.0')

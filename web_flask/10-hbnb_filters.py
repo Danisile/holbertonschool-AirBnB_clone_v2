@@ -1,31 +1,24 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Sep  1 14:42:23 2020
-
-@author: Robinson Montes
-"""
-from models import storage
-from models.state import State
-from models.amenity import Amenity
+"""Routers and Controllers"""
 from flask import Flask, render_template
+from models import storage
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
 
 @app.teardown_appcontext
-def appcontext_teardown(self):
-    """use storage for fetching data from the storage engine
-    """
+def tearDown(self):
     storage.close()
 
 
-@app.route('/hbnb_filters', strict_slashes=False)
-def state_id():
-    """Display a HTML page inside the tag BODY"""
-    return render_template('10-hbnb_filters.html',
-                           states=storage.all(State),
-                           amenities=storage.all(Amenity))
+@app.route('/hbnb_filters')
+def index_route():
+    """ display the index route """
+    states = storage.all("State").values()
+    amenity = storage.all("Amenity").values()
+    print(amenity)
+    return render_template('6-index.html', states=states, amenities=amenity)
 
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(port=5000, host='0.0.0.0')

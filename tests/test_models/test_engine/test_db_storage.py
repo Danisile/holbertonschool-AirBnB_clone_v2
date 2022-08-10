@@ -1,154 +1,116 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jun  5 15:43:09 2020
-@author: meco
-"""
-import sys
+
 import unittest
-import inspect
-import io
 import pep8
-from datetime import datetime
-from contextlib import redirect_stdout
-from models.base_model import BaseModel
-from models.engine.file_storage import FileStorage
-from models import storage
-from models.user import User
+from models import Amenity
+from models import State
+from models import City
+from models import Place
+from models import User
+from models import Review
+from models.engine.db_storage import DBStorage
+from os import environ
 
 
-class TestFileStorage(unittest.TestCase):
-    """
-    class for testing FileStorage class' methods
-    """
-    temp_file = ""
+class TestDBStorage(unittest.TestCase):
+    """Tests the DBStorage class"""
+
+    def test_pep8_FileStorage(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/db_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
 
     @classmethod
     def setUpClass(cls):
+        """set up for test"""
         """
-        Set up class method for the doc tests
+        environ['HBNB_ENV'] = 'test'
+        environ['HBNB_MYSQL_USER'] = 'hbnb_test'
+        environ['HBNB_MYSQL_PWD'] = 'hbnb_test_pwd'
+        environ['HBNB_MYSQL_HOST'] = 'localhost'
+        environ['HBNB_MYSQL_DB'] = 'hbnb_test_db'
+        environ['HBNB_TYPE_STORAGE'] = 'db'
         """
-        cls.setup = inspect.getmembers(FileStorage, inspect.isfunction)
+        pass
 
-    def test_pep8_conformance_FileStorage(self):
-        """
-        Test that file_storage.py file conform to PEP8
-        """
-        pep8style = pep8.StyleGuide(quiet=True)
-        result = pep8style.check_files(['models/file_storage.py'])
-        self.assertEqual(result.total_errors, 1,
-                         "Found code style errors (and warnings).")
-
-    def test_pep8_conformance_test_FileStorage(self):
-        """
-        Test that test_file_storage.py file conform to PEP8
-        """
-        pep8style = pep8.StyleGuide(quiet=True)
-        result = pep8style.check_files(['tests/test_models/\
-                                        test_file_storage.py'])
-        self.assertEqual(result.total_errors, 1,
-                         "Found code style errors (and warnings).")
-
-    def test_module_docstring(self):
-        """
-        Tests if module docstring documentation exist
-        """
-        self.assertTrue(len(FileStorage.__doc__) >= 1)
-
-    def test_class_docstring(self):
-        """
-        Tests if class docstring documentation exist
-        """
-        self.assertTrue(len(FileStorage.__doc__) >= 1)
-
-    def test_func_docstrings(self):
-        """
-        Tests if methods docstring documntation exist
-        """
-        for func in self.setup:
-            self.assertTrue(len(func[1].__doc__) >= 1)
-
-    @staticmethod
-    def move_file(src, dest):
-        with open(src, 'r', encoding='utf-8') as myFile:
-            with open(dest, 'w', encoding='utf-8') as tempFile:
-                tempFile.write(myFile.read())
-        os.remove(src)
-
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
     def setUp(self):
-        self.temp_file = '/temp_store.json'
-        self.temp_objs = [BaseModel(), BaseModel(), BaseModel()]
-        for obj in self.temp_objs:
-            storage.new(obj)
-        storage.save()
+        """Setup the class"""
+        self.user = User()
+        self.user.first_name = "Kev"
+        self.user.last_name = "Yo"
+        self.user.email = "1234@yahoo.com"
+        self.user.password = "1234"
+        self.storage = DBStorage()
+        self.storage.reload()
 
-    def tearDown(self):
-        """initialized object
+    def tearDownClass():
         """
-        del self.temp_objs
-
-    def test_type(self):
-        """type checks for FileStorage
+        del environ['HBNB_ENV']
+        del environ['HBNB_MYSQL_USER']
+        del environ['HBNB_MYSQL_PWD']
+        del environ['HBNB_MYSQL_HOST']
+        del environ['HBNB_MYSQL_DB']
+        del environ['HBNB_TYPE_STORAGE']
         """
-        self.assertIsInstance(storage, FileStorage)
-        self.assertEqual(type(storage), FileStorage)
+        pass
 
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
+    def test_all(self):
+        """ Tests db_storage all method to query objects in the database
+        """
+        original_len = self.storage.all(User)
+        self.storage.new(self.user)
+        self.storage.save()
+        new_len = self.storage.all(User)
+        self.assertTrue(original_len != new_len)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
+    def test_new(self):
+        """ Tests db_storage new method to add a new object"""
+        original_len = self.storage.all(User)
+        self.storage.new(self.user)
+        self.storage.save()
+        new_len = self.storage.all(User)
+        self.assertTrue(original_len != new_len)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
     def test_save(self):
-        """tests save functionality for FileStorage
-        """
-        with open('file.json', 'r', encoding='utf-8') as myFile:
-            dump = myFile.read()
-        self.assertNotEqual(len(dump), 0)
-        temp_d = eval(dump)
-        key = self.temp_objs[0].__class__.__name__ + '.'
-        key += str(self.temp_objs[0].id)
-        self.assertNotEqual(len(temp_d[key]), 0)
-        key2 = 'State.412409120491902491209491024'
-        try:
-            self.assertRaises(temp_d[key2], KeyError)
-        except:
-            pass
+        """ Tests db_storage save method to save the added object """
+        original_len = self.storage.all(User)
+        self.storage.new(self.user)
+        self.storage.save()
+        new_len = self.storage.all(User)
+        self.assertTrue(original_len != new_len)
 
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
+    def test_delete(self):
+        """ Tests db_storage delete method to delete an object form the db
+        """
+        original_len = self.storage.all(User)
+        self.storage.new(self.user)
+        self.storage.save()
+        self.storage.delete(self.user)
+        new_len = self.storage.all(User)
+        self.assertTrue(original_len == new_len)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' not in environ or
+                     environ['HBNB_TYPE_STORAGE'] != 'db', 'These tests\
+                     should only be used when storage type is db')
     def test_reload(self):
-        """tests reload functionality for FileStorage
-        """
-        storage.reload()
-        obj_d = storage.all()
-        key = self.temp_objs[1].__class__.__name__ + '.'
-        key += str(self.temp_objs[1].id)
-        self.assertNotEqual(obj_d[key], None)
-        self.assertEqual(obj_d[key].id, self.temp_objs[1].id)
-        key2 = 'State.412409120491902491209491024'
-        try:
-            self.assertRaises(obj_d[key2], KeyError)
-        except:
-            pass
-
-    def test_delete_basic(self):
-        """tests delete basic functionality for FileStorage
-        """
-        obj_d = storage.all()
-        key2 = self.temp_objs[2].__class__.__name__ + '.'
-        key2 += str(self.temp_objs[2].id)
-        try:
-            self.assertRaises(obj_d[key2], KeyError)
-        except:
-            pass
-
-    def test_new_basic(self):
-        """tests new basic functionality for FileStorage
-        """
-        obj = BaseModel()
-        storage.new(obj)
-        obj_d = storage.all()
-        key = obj.__class__.__name__ + '.' + str(obj.id)
-        self.assertEqual(obj_d[key] is obj, True)
-
-    def test_new_badinput(self):
-        """tests new bad input functionality for FileStorage
-        """
-        try:
-            self.assertRaises(storage.new('jwljfef'), TypeError)
-            self.assertRaises(storage.new(None), TypeError)
-        except:
-            pass
+        """Tests db_storage delete method"""
+        pass
+    """def test_reload(self):
+    Should we do this?
+    Also I think we should delete the commits on both new and delete """

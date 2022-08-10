@@ -1,29 +1,20 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Sep  1 14:42:23 2020
-
-@author: Robinson Montes
-"""
-from models import storage
-from models.state import State
+"""Routers and Controllers"""
 from flask import Flask, render_template
+from models import storage
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 
 
 @app.teardown_appcontext
-def appcontext_teardown(self):
-    """use storage for fetching data from the storage engine
-    """
+def tearDown(self):
     storage.close()
 
 
-@app.route('/cities_by_states', strict_slashes=False)
-def state_info():
-    """Display a HTML page inside the tag BODY"""
-    return render_template('8-cities_by_states.html',
-                           states=storage.all(State))
+@app.route('/cities_by_states')
+def list_states_cities_route():
+    states = storage.all("State").values()
+    return render_template('8-cities_by_states.html', states=states)
 
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+if __name__ == "__main__":
+    app.run(port=5000, host='0.0.0.0')

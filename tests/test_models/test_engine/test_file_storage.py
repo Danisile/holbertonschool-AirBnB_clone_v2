@@ -1,154 +1,245 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jun  5 15:43:09 2020
-@author: meco
-"""
-import sys
+"""test for file storage"""
 import unittest
-import inspect
-import io
+from unittest.mock import patch
+from io import StringIO
 import pep8
-from datetime import datetime
-from contextlib import redirect_stdout
+import json
+import os
+from console import HBNBCommand
 from models.base_model import BaseModel
-from models.engine.file_storage import FileStorage
-from models import storage
 from models.user import User
+from models.state import State
+from models.city import City
+from models.amenity import Amenity
+from models.place import Place
+from models.review import Review
+from models.engine.file_storage import FileStorage
 
 
 class TestFileStorage(unittest.TestCase):
-    """
-    class for testing FileStorage class' methods
-    """
-    temp_file = ""
+    '''this will test the FileStorage'''
 
     @classmethod
     def setUpClass(cls):
-        """
-        Set up class method for the doc tests
-        """
-        cls.setup = inspect.getmembers(FileStorage, inspect.isfunction)
+        """set up for test"""
+        cls.user = User()
+        cls.user.first_name = "Kev"
+        cls.user.last_name = "Yo"
+        cls.user.email = "1234@yahoo.com"
+        cls.storage = FileStorage()
+        cls.console = HBNBCommand()
 
-    def test_pep8_conformance_FileStorage(self):
-        """
-        Test that file_storage.py file conform to PEP8
-        """
-        pep8style = pep8.StyleGuide(quiet=True)
-        result = pep8style.check_files(['models/file_storage.py'])
-        self.assertEqual(result.total_errors, 1,
-                         "Found code style errors (and warnings).")
-
-    def test_pep8_conformance_test_FileStorage(self):
-        """
-        Test that test_file_storage.py file conform to PEP8
-        """
-        pep8style = pep8.StyleGuide(quiet=True)
-        result = pep8style.check_files(['tests/test_models/\
-                                        test_file_storage.py'])
-        self.assertEqual(result.total_errors, 1,
-                         "Found code style errors (and warnings).")
-
-    def test_module_docstring(self):
-        """
-        Tests if module docstring documentation exist
-        """
-        self.assertTrue(len(FileStorage.__doc__) >= 1)
-
-    def test_class_docstring(self):
-        """
-        Tests if class docstring documentation exist
-        """
-        self.assertTrue(len(FileStorage.__doc__) >= 1)
-
-    def test_func_docstrings(self):
-        """
-        Tests if methods docstring documntation exist
-        """
-        for func in self.setup:
-            self.assertTrue(len(func[1].__doc__) >= 1)
-
-    @staticmethod
-    def move_file(src, dest):
-        with open(src, 'r', encoding='utf-8') as myFile:
-            with open(dest, 'w', encoding='utf-8') as tempFile:
-                tempFile.write(myFile.read())
-        os.remove(src)
-
-    def setUp(self):
-        self.temp_file = '/temp_store.json'
-        self.temp_objs = [BaseModel(), BaseModel(), BaseModel()]
-        for obj in self.temp_objs:
-            storage.new(obj)
-        storage.save()
+    @classmethod
+    def teardown(cls):
+        """at the end of the test this will tear it down"""
+        del cls.user
+        del cls.console
 
     def tearDown(self):
-        """initialized object
-        """
-        del self.temp_objs
-
-    def test_type(self):
-        """type checks for FileStorage
-        """
-        self.assertIsInstance(storage, FileStorage)
-        self.assertEqual(type(storage), FileStorage)
-
-    def test_save(self):
-        """tests save functionality for FileStorage
-        """
-        with open('file.json', 'r', encoding='utf-8') as myFile:
-            dump = myFile.read()
-        self.assertNotEqual(len(dump), 0)
-        temp_d = eval(dump)
-        key = self.temp_objs[0].__class__.__name__ + '.'
-        key += str(self.temp_objs[0].id)
-        self.assertNotEqual(len(temp_d[key]), 0)
-        key2 = 'State.412409120491902491209491024'
+        """teardown"""
         try:
-            self.assertRaises(temp_d[key2], KeyError)
-        except:
+            os.remove("file.json")
+        except Exception:
             pass
 
-    def test_reload(self):
-        """tests reload functionality for FileStorage
+    @staticmethod
+    def remove_all():
+        """Function to remove all items from storage"""
+        storage = FileStorage()
+        objects = storage.all()
+        objects = list(objects.values())
+
+        for element in objects:
+            storage.delete(element)
+        objects = storage.all()
+
+    def test_pep8_FileStorage(self):
+        """Tests pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/file_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_all(self):
+        """tests if all works in File Storage"""
+        storage = FileStorage()
+        obj = storage.all()
+        self.assertIsNotNone(obj)
+        self.assertEqual(type(obj), dict)
+        self.assertIs(obj, storage._FileStorage__objects)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_all_class(self):
+        """tests if all will return specified class objects in File Storage"""
+        storage = FileStorage()
+        obj = storage.all(User)
+        self.assertIsNotNone(obj)
+        self.assertEqual(type(obj), dict)
+        self.assertIsNot(obj, {})
+        self.assertIsNot(obj, storage._FileStorage__objects)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_all_unknown_class(self):
+        """ tests for invalid classes when calling all """
+        storage = FileStorage()
+        with self.assertRaises(NameError):
+            storage.all(dog)
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_new(self):
+        """test when new is created"""
+        storage = FileStorage()
+        obj = storage.all()
+        user = User()
+        user.id = 123455
+        user.name = "Kevin"
+        storage.new(user)
+        key = user.__class__.__name__ + "." + str(user.id)
+        self.assertIsNotNone(obj[key])
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_delete(self):
+        """ Tests delete method to delete objects in __object """
+        storage = FileStorage()
+        obj_dict = storage.all()
+        usr = User()
+        usr.id = 12345
+        storage.new(usr)
+        storage.delete(usr)
+        key = usr.__class__.__name__ + "." + str(usr.id)
+        self.assertFalse(key in obj_dict.keys())
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_reload_filestorage(self):
         """
-        storage.reload()
-        obj_d = storage.all()
-        key = self.temp_objs[1].__class__.__name__ + '.'
-        key += str(self.temp_objs[1].id)
-        self.assertNotEqual(obj_d[key], None)
-        self.assertEqual(obj_d[key].id, self.temp_objs[1].id)
-        key2 = 'State.412409120491902491209491024'
+        tests reload
+        """
+        self.storage.save()
+        Root = os.path.dirname(os.path.abspath("console.py"))
+        path = os.path.join(Root, "file.json")
+        with open(path, 'r') as f:
+            lines = f.readlines()
         try:
-            self.assertRaises(obj_d[key2], KeyError)
+            os.remove(path)
         except:
             pass
-
-    def test_delete_basic(self):
-        """tests delete basic functionality for FileStorage
-        """
-        obj_d = storage.all()
-        key2 = self.temp_objs[2].__class__.__name__ + '.'
-        key2 += str(self.temp_objs[2].id)
+        self.storage.save()
+        with open(path, 'r') as f:
+            lines2 = f.readlines()
+        self.assertEqual(lines, lines2)
         try:
-            self.assertRaises(obj_d[key2], KeyError)
+            os.remove(path)
         except:
             pass
+        with open(path, "w") as f:
+            f.write("{}")
+        with open(path, "r") as r:
+            for line in r:
+                self.assertEqual(line, "{}")
+        self.assertIs(self.storage.reload(), None)
 
-    def test_new_basic(self):
-        """tests new basic functionality for FileStorage
-        """
-        obj = BaseModel()
-        storage.new(obj)
-        obj_d = storage.all()
-        key = obj.__class__.__name__ + '.' + str(obj.id)
-        self.assertEqual(obj_d[key] is obj, True)
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_create_valid_str(self):
+        """Tests do_create method in console when given valid str input"""
+        storage = FileStorage()
+        tests = ['new', 'new\\\"', '\\\"', 'My_little_house', '""', '____']
+        expected = ['new', 'new"', '"', 'My little house', '', '    ']
 
-    def test_new_badinput(self):
-        """tests new bad input functionality for FileStorage
-        """
-        try:
-            self.assertRaises(storage.new('jwljfef'), TypeError)
-            self.assertRaises(storage.new(None), TypeError)
-        except:
-            pass
+        for i in range(len(tests)):
+            self.remove_all()
+            with patch('sys.stdout', new=StringIO()) as f:
+                self.console.onecmd(
+                    'create BaseModel test_var="{}"'.format(tests[i]))
+            attributes = list(storage.all().values())
+            actual = attributes[0].test_var
+            self.assertEqual(expected[i], actual)
+            self.assertEqual(str, type(actual))
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_create_invalid_str(self):
+        """Tests that variable is not created when given invalid str input"""
+        storage = FileStorage()
+        tests = ['"', 'Hi "', '"Hi', '\"']
+
+        for test in tests:
+            self.remove_all()
+            with patch('sys.stdout', new=StringIO()) as f:
+                self.console.onecmd(
+                    'create BaseModel test_var={}'.format(test))
+            attributes = list(storage.all().values())
+            self.assertFalse('test_var' in attributes[0].to_dict())
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_create_valid_int(self):
+        """Tests do_create method in console when given valid integer input"""
+        storage = FileStorage()
+        tests = [9, 12, 10000]
+        expected = [9, 12, 10000]
+
+        for i in range(len(tests)):
+            self.remove_all()
+            with patch('sys.stdout', new=StringIO()) as f:
+                self.console.onecmd(
+                    'create BaseModel test_var={}'.format(tests[i]))
+            attributes = list(storage.all().values())
+            actual = attributes[0].test_var
+            self.assertEqual(expected[i], actual)
+            self.assertEqual(int, type(actual))
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_create_invalid_int(self):
+        """Tests do_create method in console when given invalid integers"""
+        storage = FileStorage()
+        tests = ['9.a', '90ab10', '90.b1']
+
+        for test in tests:
+            self.remove_all()
+            with patch('sys.stdout', new=StringIO()) as f:
+                self.console.onecmd(
+                    'create BaseModel test_var={}'.format(test))
+            attributes = list(storage.all().values())
+            self.assertFalse('test_var' in attributes[0].to_dict())
+
+    @unittest.skipIf('HBNB_TYPE_STORAGE' in os.environ and
+                     os.environ['HBNB_TYPE_STORAGE'] == 'db', 'These tests\
+                     are valid for file storage class only')
+    def test_create_valid_float(self):
+        """Tests do_create method in console when given valid float values"""
+        storage = FileStorage()
+        tests = [9.124, 90.24, 90.0, 90.]
+        expected = [9.124, 90.24, 90.0, 90.0]
+
+        for i in range(len(tests)):
+            self.remove_all()
+            with patch('sys.stdout', new=StringIO()) as f:
+                self.console.onecmd(
+                    'create BaseModel test_var={}'.format(tests[i]))
+            attributes = list(storage.all().values())
+            actual = attributes[0].test_var
+            self.assertEqual(expected[i], actual)
+            self.assertEqual(float, type(actual))
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,19 +1,26 @@
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
 """
-Fabric script generates .tgz archive from contents of web_static directory
+Created on Mon Aug 13 14:21:54 2020
+@author: Robinson Montes
 """
-from fabric.api import local
+from fabric.api import local, env
 from datetime import datetime
+
+env.user = 'ubuntu'
+env.hosts = ['35.227.35.75', '100.24.37.33']
 
 
 def do_pack():
-    """ return archive path if successful """
-    cur_time = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    local("mkdir -p versions")
-    try:
-        local("tar -cvzf versions/web_static_{}.tgz web_static".format(
-            cur_time))
-        return ("versions/web_static_{}.tgz".format(cur_time))
-    except:
+    """
+    Targging project directory into a packages as .tgz
+    """
+    now = datetime.now().strftime("%Y%m%d%H%M%S")
+    local('sudo mkdir -p ./versions')
+    path = './versions/web_static_{}'.format(now)
+    local('sudo tar -czvf {}.tgz web_static'.format(path))
+    name = '{}.tgz'.format(path)
+    if name:
+        return name
+    else:
         return None
